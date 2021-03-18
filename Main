@@ -1,0 +1,434 @@
+/*
+ *
+ * Created: 3/21/2020 12:26:50 PM
+ * Author : Nathan Farrar
+ */ 
+
+//** GLOBAL VARIABLES **/
+long freqclk = 16000000; // clock frequency in Hz
+volatile int count_door1 = 0;
+volatile int count_door2 = 0;
+char flag1 = 0;
+char flag2 = 0;
+char sensorvalue = 0; // value read from analog sensor (0-1023)
+
+char oldposition = 24;
+char phase_step = 1; // We will use wave stepping, so the steps are numbered 1-4, then will repeat.
+char position = 24;
+
+
+//** FUNCTION DECLARATIONS **//
+void wait(volatile int N);  // Note that variables in the delay loops are declared as volatile.  If not, the compiler will likely
+// see these as not necessary since they are not used for any important tasks or I/O and will eliminate the loops.  In fact, if
+// the simulator is used without these being declared volatile, then the loops will be ignored all together in the simulation,
+// and the cycle counter will not grow correctly.
+void delay_1_msec_raw_count();
+
+void step_CW( void );
+void step_CCW( void );
+
+
+#include <avr/io.h>
+
+
+//============================================================
+// MAIN
+//============================================================
+
+int main(void)
+{
+	DDRD = 0b11111111; //DPorts are set as outputs.
+					   // Make OC0A (PD6) and OC0B (PD5) output bits ?? these are the PWM pins;
+	DDRB = 0b00111111; //Ports B0 through B5 are set as outputs.
+	DDRC = 0b00000000; //Port C0 through C6 is set as an input.
+	PORTB = PORTB | 0b11111111; //Setting PORTB0-PORTBT to off (active-low)
+	PRR = 0x00;  // clear Power Reduction ADC bit (0) in PRR register
+	ADCSRA = 1<<ADEN | 1<<ADPS2 | 1<<ADPS1 | 1<<ADPS0;  // 0x87 // 0b10000111 // Set ADC Enable bit (7) in ADCSRA register, and set ADC prescaler to 128 (bits 2-0 of ADCSRA = ADPS2-ADPS0 = 111)
+	ADMUX = 0b01100000; // bit 6-7 AVCC with external capacitor at AREF pin
+						//bit 5 left justification
+						
+	int i=0; //counter variable
+						
+						
+	//OCR0A = 0x00; // Load $00 into OCR0 to set initial duty cycle to 0 (motor off)
+	//TCCR0A = 1<<COM0A1 | 0<<COM0A0 |  1<<WGM01 | 1<<WGM00; // Set non?inverting mode on OC0A pin (COMA1:0 = 10; Fast PWM (WGM1:0 bits = bits 1:0 = 11) (Note that we are not affecting OC0B because COMB0:1 bits stay at default = 00) TCCR0B = 0<<CS02 | 1<<CS01 | 1<<CS00; // Set base PWM frequency (CS02:0 ? bits 2?0 = 011 for prescaler of 64, for approximately 1kHz base frequency)
+	// PWM is now running on selected pin at selected base frequency. Duty cycle is set by loading/changing value in OCR0A register.
+	//TCCR0B = 0<<WGM02 |0<<CS02 | 1<<CS01 | 1<<CS00;
+	
+//============================================================
+// PROGRAM LOOP
+//============================================================
+  
+    while (1) 
+    {
+		// Read analog input
+		ADCSRA |= (1<<ADSC); // Start conversion
+		while ((ADCSRA & (1<<ADIF)) ==0); // wait for conversion to finish
+		
+		sensorvalue = ADCH; // Keep high byte of 10-bit result (throw away lowest two bits)
+		
+		position = (int)sensorvalue/5;
+		
+		PORTB = PORTB | 0b11111111;
+		
+		if(sensorvalue <= 5) //0
+		{
+			position = 0;
+		}
+		
+		else if(sensorvalue <= 10) //1
+		{
+			position = 1;
+		}
+		
+		else if(sensorvalue <= 15) //2
+		{
+			position = 2;
+		}
+		
+		else if(sensorvalue <= 20) //3
+		{
+			position = 3;
+		}
+		
+		else if(sensorvalue <= 25) //4
+		{
+			position = 4;
+		}
+		
+		else if(sensorvalue <= 30) //5
+		{
+			position = 5;
+		}
+		
+		else if(sensorvalue <= 35) //6
+		{
+			position = 6;
+		}
+		
+		else if(sensorvalue <= 40) //7
+		{
+			position = 7;
+		}
+		
+		else if(sensorvalue <= 45) //8
+		{
+			position = 8;
+		}
+		
+		else if(sensorvalue <= 50) //9
+		{
+			position = 9;
+		}
+		
+		else if(sensorvalue <= 55) //10
+		{
+			position = 10;
+		}
+		
+		else if(sensorvalue <= 60) //11
+		{
+			position = 11;
+		}
+		
+		else if(sensorvalue <= 65) //12
+		{
+			position = 12;
+		}
+		
+		else if(sensorvalue <= 70) //13
+		{
+			position = 13;
+		}
+		
+		else if(sensorvalue <= 75) //14
+		{
+			position = 14;
+		}
+		
+		else if(sensorvalue <= 80) //15
+		{
+			position = 15;
+		}
+		
+		else if(sensorvalue <= 85) //16
+		{
+			position = 16;
+		}
+		
+		else if(sensorvalue <= 90) //17
+		{
+			position = 17;
+		}
+		
+		else if(sensorvalue <= 95) //18
+		{
+			position = 18;
+		}
+		
+		else if(sensorvalue <= 100) //19
+		{
+			position = 19;
+		}
+		
+		else if(sensorvalue <= 105) //20
+		{
+			position = 20;
+		}
+		
+		else if(sensorvalue <= 110) //21
+		{
+			position = 21;
+		}
+		
+		else if(sensorvalue <= 115) //22
+		{
+			position = 22;
+		}
+		
+		else if(sensorvalue <= 120) //23
+		{
+			position = 23;
+		}
+		
+		else if(sensorvalue <= 135) //24
+		{
+			position = 24;
+		}
+		
+		else if(sensorvalue <= 140) //25
+		{
+			position = 25;
+		}
+		
+		else if(sensorvalue <= 145) //26
+		{
+			position = 26;
+		}
+		
+		else if(sensorvalue <= 150) //27
+		{
+			position = 27;
+		}
+		
+		else if(sensorvalue <= 155) //28
+		{
+			position = 28;
+		}
+		
+		else if(sensorvalue <= 160) //29
+		{
+			position = 29;
+		}
+		
+		else if(sensorvalue <= 165) //30
+		{
+			position = 30;
+		}
+		
+		else if(sensorvalue <= 170) //31
+		{
+			position = 31;
+		}
+		
+		else if(sensorvalue <= 175) //32
+		{
+			position = 32;
+		}
+		
+		else if(sensorvalue <= 180) //33
+		{
+			position = 33;
+		}
+		
+		else if(sensorvalue <= 185) //34
+		{
+			position = 34;
+		}
+		
+		else if(sensorvalue <= 190) //35
+		{
+			position = 35;
+		}
+		
+		else if(sensorvalue <= 195) //36
+		{
+			position = 36;
+		}
+		
+		else if(sensorvalue <= 200) //37
+		{
+			position = 37;
+		}
+		
+		else if(sensorvalue <= 205) //38
+		{
+			position = 38;
+		}
+		
+		else if(sensorvalue <= 210) //39
+		{
+			position = 39;
+		}
+		
+		else if(sensorvalue <= 215) //40
+		{
+			position = 40;
+		}
+		
+		else if(sensorvalue <= 220) //41
+		{
+			position = 41;
+		}
+		
+		else if(sensorvalue <= 225) //42
+		{
+			position = 42;
+		}
+		
+		else if(sensorvalue <= 230) //43
+		{
+			position = 43;
+		}
+		
+		else if(sensorvalue <= 235) //44
+		{
+			position = 44;
+		}
+		
+		else if(sensorvalue <= 240) //45
+		{
+			position = 45;
+		}
+		
+		else if(sensorvalue <= 245) //46
+		{
+			position = 46;
+		}
+		
+		else if(sensorvalue <= 250) //47
+		{
+			position = 47;
+		}
+		
+		else if(sensorvalue <= 255) //48
+		{
+			position = 48;
+		}
+		
+		
+		
+		if ( (int)position - (int)oldposition  == 0) //no change in position
+		{
+			PORTB = PORTB | 0b11111111; // PB0-5 lights reset to off
+		}
+		
+		
+		
+		else if( (int)position - (int)oldposition  > 0) //clockwise motion 
+		{
+			PORTB = 0b11111110; // turns on count-clockwise light B0
+			
+			step_CW();
+			wait(250);
+			oldposition = oldposition + 1;
+			
+		}
+		
+		
+		else if( (int)position - (int)oldposition < 0) //counter-clockwise motion
+		{
+			PORTB = 0b11111101; // turns on count-clockwise light B1
+			step_CCW();
+			wait(250);
+			oldposition = oldposition - 1;
+			
+		}
+		
+		//wait(100);
+	}
+
+}
+
+
+
+//=========================================
+// S U B R O U T I N E S
+//=========================================
+
+void wait(volatile int N) {
+	//*** wait ***
+		
+	/* This subroutine creates a delay of N msec by calling another function.
+			Inputs: N = number of msec for the delay (N is int, so can be up to 65,536 msec)
+			Outputs: None
+			
+		Why is N a volatile variable? Some C compilers try to optimize the code and may eliminate code that appears to do nothing.  A time-killing 
+		loop is is one of those code blocks that could be removed during compile.  Using a nonvolatile variable in the function tells the compiler not 
+		remove it.
+	*/
+	while (N>1) {  // This loop creates an N msec delay
+		N=N-1;
+		delay_1_msec_raw_count();
+	}
+} // end wait()
+
+void delay_1_msec_raw_count() {
+    //*** delay N ms **
+    /* This subroutine creates a delay of N msec by using a raw time-killing count.
+			Inputs: None
+			Outputs: None
+	*/
+	volatile int count = (freqclk/1000-28)/4; // each cycle takes 4 clock cycles, so count is the number of cycles needed to create a 1 msec delay.
+									// 28 is the approximate number of other clock cycles used in the subroutine
+	while (count > 1) {  // This loop is expected to create a 1 msec delay, but it is in fact much longer.  Because of the size of the variables,
+			// there is a lot more that needs to be done each cycle so the loop takes much longer than 1 msec to execute. To know exact time for each 
+			// instruction, use assembly language instead of C. (Or look at the disassembly code file and count instructions.)
+			count--; // decrement count
+	}
+	
+		
+} // end delay_1_msec_raw_count()
+
+void step_CW() {
+	// This function advances the motor clockwise one step. Follow the full-wave stepping table in Stepper Motor Control.ppt for MEMS 1049 course. Our stepper motor phases are assigned to Port pins as follows: phase1a = PORTD_7, phase1b = PORTD_6, phase2a = PORTD_5, phase2b = PORTD_4
+	switch (phase_step) { case 1:
+		// step to 4
+		PORTD = 0b00100000; phase_step = 4;
+		break;
+		case 2:
+		// step to 1
+		PORTD = 0b10000000; phase_step = 1;
+		break;
+		case 3:
+		// step to 2;
+		PORTD = 0b00010000; phase_step = 2;
+		break;
+		case 4:
+		// step to 3;
+		PORTD = 0b01000000; phase_step = 3;
+	break; }
+}// end step_CW
+
+
+void step_CCW()
+{
+	// This function advances the motor counter-clockwise one step. Follow the full-wave stepping table in Stepper Motor Control.ppt for MEMS 1049 course. phase1a = PORTD_7, phase1b = PORTD_6
+	// phase2a = PORTD_5, phase2b = PORTD_4
+	switch (phase_step) { case 1:
+		// step to 2
+		PORTD = 0b00010000; phase_step = 2;
+		break;
+		case 2:
+		// step to 3
+		PORTD = 0b01000000; phase_step = 3;
+		break;
+		case 3:
+		// step to 4;
+		PORTD = 0b00100000; phase_step = 4;
+		break;
+		case 4:
+		// step to 1;
+		PORTD = 0b10000000; phase_step = 1;
+	break; }
+}// end step_CCW
